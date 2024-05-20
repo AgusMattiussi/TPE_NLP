@@ -1,4 +1,5 @@
 from collections import defaultdict
+import heapq
 import math
 import re
 import string
@@ -42,6 +43,12 @@ def get_label_idf(label_tf: dict):
     
     return idf_words
 
+def get_label_tfidf(tf: dict, idf: dict):
+    tf_idf = {}
+    for word, tf_value in tf.items():
+        tf_idf[word] = tf_value*idf[word]
+    return tf_idf
+
 if __name__ == '__main__':
     df = pd.read_csv('../data/bbc_data.csv')
     labeled_articles = defaultdict(list)
@@ -64,3 +71,6 @@ if __name__ == '__main__':
         label_data = count_word_amount_per_article(articles)
         label_tf = get_label_tf(label_data)
         label_idf = get_label_idf(label_tf)
+        label_tf_idf = get_label_tfidf(label_tf, label_idf)
+        # top_30_labels = heapq.nlargest(30, label_tf_idf, key=label_tf_idf.get)
+        # print(label, top_30_labels)

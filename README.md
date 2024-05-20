@@ -19,3 +19,4 @@ pip install -r requirements.txt
 import nltk
 nltk.download('stopwords')
 ```
+And mannually added some words as needed ('also', 'said', 'Mr', 'Mrs', 'would', 'will', 'one', 'two', 'three', 'four', 'new', 'like', 'way', 'get', 'say')
