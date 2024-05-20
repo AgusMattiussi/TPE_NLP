@@ -2,6 +2,15 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
+def read_english_stopwords(file_path):
+    word_set = set()
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            words = line.strip().split()
+            word_set.update(words)
+    return word_set
+
+
 def count_word_amount_per_article(articles: list):
     label_data = defaultdict(int)
 
@@ -23,9 +32,11 @@ def get_label_tf(label: str, articles: list):
 if __name__ == '__main__':
     df = pd.read_csv('../data/bbc_data.csv')
     labeled_articles = defaultdict(list)
+    english_stopwords = read_english_stopwords("../data/english.txt")
     
     for _, row in df.iterrows():
-        labeled_articles[row['labels']].append(row['data'])
+        if str(row['data']) not in english_stopwords:
+            labeled_articles[row['labels']].append(row['data'])
 
     for label, articles in labeled_articles.items():
         get_label_tf(label, articles)
