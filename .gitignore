@@ -11,5 +11,5 @@
 profile_default/
 ipython_config.py
 
-bert_finetuned/*
+finetuned_BERT_epoch*
 
