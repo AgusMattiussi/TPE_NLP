@@ -13,3 +13,9 @@ source .nlp_venv/bin/activate #activate it
 ```
 pip install -r requirements.txt
 ```
+
+**English stopwords**
+```
+import nltk
+nltk.download('stopwords')
+```
