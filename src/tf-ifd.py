@@ -1,76 +1,53 @@
 from collections import defaultdict
-import heapq
-import math
-import re
-import string
-import numpy as np
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-def read_english_stopwords(file_path):
-    word_set = set()
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            words = line.strip().split()
-            word_set.update(words)
-    return word_set
+def train(X_train, y_train, max_iter=10000):
+    model = LogisticRegression(max_iter=max_iter)
+    model.fit(X_train, y_train)
+    return model
 
+def evaluate_model(model, X_train, X_test, y_train, y_test):
+    y_pred = model.predict(X_test)
 
-def count_word_amount_per_article(articles: list):
-    label_data = defaultdict(int)
-
-    for article in articles:
-        words = article.split()
-        for word in words:
-            label_data[word] += 1
-    return label_data
-
-def get_label_tf(label_data: defaultdict):
-    word_count = np.size(list(label_data.keys()))
-    tf_words={}
-
-    for word, count in label_data.items():
-        tf_words[word] = count/word_count
-
-    return tf_words
-
-def get_label_idf(label_tf: dict):
-    N = len(label_tf)
-    idf_words = {}
+    accuracy = accuracy_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred, average='macro')
+    precision = precision_score(y_test, y_pred, average='macro')
+    f1 = f1_score(y_test, y_pred, average='macro')
     
-    idf_words = dict.fromkeys(label_tf.keys(), 0)
-    for word, val in idf_words.items():
-        idf_words[word] = math.log10(N / (float(val) + 1))
-    
-    return idf_words
+    train_df = pd.DataFrame({'Metric': ['F1 Score', 'Precision', 'Recall', 'Accuracy'], 'Value': [f1_score(y_train, model.predict(X_train), average='macro'), precision_score(y_train, model.predict(X_train), average='macro'), recall_score(y_train, model.predict(X_train), average='macro'), accuracy_score(y_train, model.predict(X_train))]})
+    test_df = pd.DataFrame({'Metric': ['F1 Score', 'Precision', 'Recall', 'Accuracy'], 'Value': [f1, precision, recall, accuracy]})
 
-def get_label_tfidf(tf: dict, idf: dict):
-    tf_idf = {}
-    for word, tf_value in tf.items():
-        tf_idf[word] = tf_value*idf[word]
-    return tf_idf
+    train_df['Model'] = 'Train'
+    test_df['Model'] = 'Test'
+
+    # Combinar los DataFrames
+    combined_df = pd.concat([train_df, test_df])
+    pivot_df = combined_df.pivot(index='Metric', columns='Model', values='Value')
+    print(pivot_df)
 
 if __name__ == '__main__':
     df = pd.read_csv('../data/bbc_data.csv')
     labeled_articles = defaultdict(list)
     english_stopwords = read_english_stopwords("../data/english.txt")
-    
+
+    labels_idx = {label: idx for idx, label in enumerate(df['labels'].unique())}
+    X = []
+    y = []
+
     for _, row in df.iterrows():
-        words = row['data'].split()
-        
-        filtered_words = []
-        for word in words:
-            word = word.strip(string.punctuation)
-            if word.lower() not in english_stopwords:
-                filtered_words.append(word)
-        cleaned_data = ' '.join(filtered_words)
-        
-        labeled_articles[row['labels']].append(cleaned_data)
+        y.append(labels_idx[row['labels']])
 
+    # Initialize TfidfVectorizer
+    vectorizer = TfidfVectorizer(stop_words='english')
+    # Fit and transform the data to create the TF-IDF matrix
+    X = vectorizer.fit_transform(df['data'])
 
-    for label, articles in labeled_articles.items():
-        label_data = count_word_amount_per_article(articles)
-        label_tf = get_label_tf(label_data)
-        label_idf = get_label_idf(label_tf)
-        label_tf_idf = get_label_tfidf(label_tf, label_idf)
-        # top_30_labels = heapq.nlargest(30, label_tf_idf, key=label_tf_idf.get)
-        # print(label, top_30_labels)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Define model and evaluate
+    model = train(X_train, y_train)
+
+    accuracy, recall, precision, f1 = evaluate_model(model, X_train, X_test, y_train, y_test)
