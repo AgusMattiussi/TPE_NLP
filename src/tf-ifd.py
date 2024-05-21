@@ -11,6 +11,11 @@ def train(X_train, y_train, max_iter=10000):
     return model
 
 def evaluate_model(model, X_train, X_test, y_train, y_test):
+    # Train
+    train_df = pd.DataFrame({'Metric': ['F1 Score', 'Precision', 'Recall', 'Accuracy'], 'Value': [f1_score(y_train, model.predict(X_train), average='macro'), precision_score(y_train, model.predict(X_train), average='macro'), recall_score(y_train, model.predict(X_train), average='macro'), accuracy_score(y_train, model.predict(X_train))]})
+    train_df['Model'] = 'Train'
+
+    # Test   
     y_pred = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, y_pred)
@@ -18,36 +23,32 @@ def evaluate_model(model, X_train, X_test, y_train, y_test):
     precision = precision_score(y_test, y_pred, average='macro')
     f1 = f1_score(y_test, y_pred, average='macro')
     
-    train_df = pd.DataFrame({'Metric': ['F1 Score', 'Precision', 'Recall', 'Accuracy'], 'Value': [f1_score(y_train, model.predict(X_train), average='macro'), precision_score(y_train, model.predict(X_train), average='macro'), recall_score(y_train, model.predict(X_train), average='macro'), accuracy_score(y_train, model.predict(X_train))]})
     test_df = pd.DataFrame({'Metric': ['F1 Score', 'Precision', 'Recall', 'Accuracy'], 'Value': [f1, precision, recall, accuracy]})
-
-    train_df['Model'] = 'Train'
     test_df['Model'] = 'Test'
 
     # Combinar los DataFrames
     combined_df = pd.concat([train_df, test_df])
     pivot_df = combined_df.pivot(index='Metric', columns='Model', values='Value')
-    print(pivot_df)
+    return pivot_df
 
 if __name__ == '__main__':
     df = pd.read_csv('../data/bbc_data.csv')
     labeled_articles = defaultdict(list)
-    english_stopwords = read_english_stopwords("../data/english.txt")
-
     labels_idx = {label: idx for idx, label in enumerate(df['labels'].unique())}
-    X = []
     y = []
 
     for _, row in df.iterrows():
         y.append(labels_idx[row['labels']])
 
-    # Initialize TfidfVectorizer
     vectorizer = TfidfVectorizer(stop_words='english')
-    # Fit and transform the data to create the TF-IDF matrix
+    # This does:
+    # tf_word = word_appearances_amount_per_article/total_amount_of_words_per_article
+    # idf_word = math.log10(amount_of_articles / (float(word_appearances_in_all_articles) + 1))
+    # tf_idf_word = tf_word * idf_word
     X = vectorizer.fit_transform(df['data'])
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
     # Define model and evaluate
     model = train(X_train, y_train)
-
-    accuracy, recall, precision, f1 = evaluate_model(model, X_train, X_test, y_train, y_test)
+    metric_df = evaluate_model(model, X_train, X_test, y_train, y_test)
